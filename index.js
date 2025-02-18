@@ -13,8 +13,6 @@ async function handleRequest(request) {
 
     var index = Math.floor(Math.random() * background_urls.length);
     const imageUrl = background_urls[index];
-
-    // 代理请求修改Referer解决微博图床防盗链问题
     const reqHeaders = new Headers(request.headers);
     let outHeaders = new Headers({
         "Access-Control-Allow-Origin": "*",
@@ -23,12 +21,18 @@ async function handleRequest(request) {
     });
 
     try {
-        // 构建代理请求
+        const fetchHeaders = {};
+        
+        // 当图片来自微博图床时反防盗链
+        const urlObj = new URL(imageUrl);
+        if (urlObj.hostname.endsWith('.weibocdn.com') || urlObj.hostname.endsWith('.sinaimg.cn')) {
+            fetchHeaders['Referer'] = 'https://weibo.com/';
+        }
+
+        // 代理请求
         const proxyResponse = await fetch(imageUrl, {
             method: 'GET',
-            headers: {
-                'Referer': 'https://weibo.com/' // 设置Referer头部以解决防盗链
-            }
+            headers: fetchHeaders
         });
 
         if (!proxyResponse.ok) {
@@ -37,7 +41,7 @@ async function handleRequest(request) {
 
         const contentType = proxyResponse.headers.get('content-type');
 
-        // 返回代理的结果
+        // 返回结果
         return new Response(proxyResponse.body, {
             status: proxyResponse.status,
             statusText: proxyResponse.statusText,
